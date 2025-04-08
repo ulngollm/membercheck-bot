@@ -1,8 +1,10 @@
 package main
 
 import (
+	"github.com/ulngollm/membercheckbot/middleware"
 	"log"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -24,6 +26,27 @@ func main() {
 		return
 	}
 
+	if !ok {
+		log.Fatalf("chatID is empty")
+		return
+	}
+
+	chID, ok := os.LookupEnv("SUBSCRIPTION_CHAT_ID")
+	if !ok {
+		log.Fatalf("SUBSCRIPTION_CHAT_ID is empty")
+		return
+	}
+	chatID, err := strconv.Atoi(chID)
+	if err != nil {
+		log.Fatalf("strconv.Atoi: %s", err)
+		return
+	}
+	message := os.Getenv("SUBSCRIPTION_ASK_MSG")
+	if message == "" {
+		log.Fatalf("SUBSCRIPTION_ASK_MSG is empty")
+		return
+	}
+
 	pref := tele.Settings{
 		Token:  t,
 		Poller: &tele.LongPoller{Timeout: time.Second},
@@ -34,11 +57,20 @@ func main() {
 		return
 	}
 
-	bot.Handle("/start", handle)
+	chat, err := bot.ChatByID(int64(chatID))
+	if err != nil {
+		log.Fatalf("tele.ChatByID: %s", err)
+		return
+	}
+
+	g := bot.Group()
+	g.Use(middleware.NewSubscriptionMiddleware(message, chat).CheckSubscription)
+	g.Handle("/start", handle)
+	g.Handle(tele.OnText, handle)
 
 	bot.Start()
 }
 
 func handle(c tele.Context) error {
-	return c.Send(c.Message())
+	return c.Send("Hello!")
 }
