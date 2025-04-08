@@ -24,7 +24,10 @@ func (s *SubscriptionMiddleware) CheckSubscription(next tele.HandlerFunc) tele.H
 		if err != nil {
 			return fmt.Errorf("chatMemberOf: %w", err)
 		}
-		if member.Member {
+		if member.Member || //для каналов этой проверки недостаточно
+			member.Role == tele.Creator ||
+			member.Role == tele.Administrator ||
+			member.Role == tele.Member {
 			return next(c)
 		}
 
